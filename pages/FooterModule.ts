@@ -44,7 +44,7 @@ export default class FooterModule extends ProductLogo implements IFooterActions,
         // Sauce Labs. All Rights Reserved.: This matches those specific words and spaces exactly.
 
         // .: In Regex, a period normally means "any character," but since it's followed by text here, Playwright treats it as a literal period.
-        await expect(this.footerNote).toHaveText(/© \d{4} Sauce Labs. All Rights Reserved./);
+        await expect(this.footerNote,"Footer should be availabe in application").toHaveText(/© \d{4} Sauce Labs. All Rights Reserved./);
     }
 
     // These methods now just perform the click; 

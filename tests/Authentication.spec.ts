@@ -16,10 +16,8 @@ test.describe("Authentication Tests", () => {
     // ─────────────────────────────────────────────
 
     test.describe("Valid Login Scenarios (Data-Driven)", () => {
-
         for (const user of data.validLoginUsers) {
             test(`Valid Login: ${user.description} (${user.username})`, { tag: ['@QA', '@UAT', '@smoke', '@regression', '@sanity'] }, async ({ loginPage, productsPage, page }) => {
-
                 // 1. Navigate to login page
                 await loginPage.openSauceDemo();
 
@@ -38,10 +36,8 @@ test.describe("Authentication Tests", () => {
     // ─────────────────────────────────────────────
 
     test.describe("Negative Login Scenarios (Data-Driven)", () => {
-
         for (const scenario of data.negativeLoginTests) {
             test(`Negative Login: ${scenario.description}`, { tag: ['@QA', '@UAT', '@regression', '@negativeTest', '@validation'] }, async ({ loginPage }) => {
-
                 // 1. Navigate to login page
                 await loginPage.openSauceDemo();
 
@@ -61,9 +57,7 @@ test.describe("Authentication Tests", () => {
     // ─────────────────────────────────────────────
 
     test.describe("Security & UI Validations", () => {
-
         test("Password Masking: Characters should be hidden in password field", { tag: ['@QA', '@UAT', '@regression', '@ui', '@sanity'] }, async ({ loginPage }) => {
-
             // 1. Navigate to login page
             await loginPage.openSauceDemo();
 
@@ -72,7 +66,6 @@ test.describe("Authentication Tests", () => {
         });
 
         test("Unauthorized Access: Direct navigation to inventory without login", { tag: ['@QA', '@UAT', '@regression', '@negativeTest', '@sanity'] }, async ({ loginPage, page }) => {
-
             // 1. Attempt to navigate directly to the inventory page
             await loginPage.openProductPage();
 
@@ -86,7 +79,6 @@ test.describe("Authentication Tests", () => {
         });
 
         test("Logout Redirection: User cannot use Back button after logout", { tag: ['@QA', '@UAT', '@regression', '@navigation', '@sanity'] }, async ({ loginPage, sideBar, page }) => {
-
             // 1. Login successfully
             await loginPage.openSauceDemo();
             await loginPage.loginSauceDemo("standard_user", "secret_sauce");
@@ -111,19 +103,16 @@ test.describe("Authentication Tests", () => {
     // ─────────────────────────────────────────────
 
     test.describe("Visual Regression Tests", () => {
-
         test("Verify Login Page visual layout", { tag: ['@QA', '@UAT', '@visual', '@regression'] }, async ({ loginPage, page }) => {
             // 1. Navigate to login page
             await loginPage.openSauceDemo();
 
             // 2. Perform visual snapshot comparison
-            // This will create a baseline image on the first run
             await expect(page).toHaveScreenshot('login-page.png', {
                 fullPage: true,
                 animations: 'disabled'
             });
         });
-
     });
 
 });

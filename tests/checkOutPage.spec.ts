@@ -68,7 +68,13 @@ test.describe("Checkout Overview: Navigation", () => {
     });
 });
 
-test("Verify social media icons in Cart Finish page", { tag: ['@QA', '@UAT', '@regression'] }, async ({ footerModule, context, cartFinishPage }) => {
+test.describe("Footer Module Validations in checkout finish page", () => {
+
+
+    test("Verify footer copyright text displays correctly", { tag: ['@QA', '@UAT', '@regression', '@footer', '@ui'] }, async ({ footerModule, cartFinishPage }) => {
+        await footerModule.isFooternoteAvailable();
+    });
+    test("Verify social media icons in checkout finish page", { tag: ['@QA', '@UAT', '@regression'] }, async ({ footerModule, context, cartFinishPage }) => {
 
         // 1. Validate Twitter (X)
         const [twitterPage] = await Promise.all([
@@ -94,4 +100,6 @@ test("Verify social media icons in Cart Finish page", { tag: ['@QA', '@UAT', '@r
         // LinkedIn often shows an 'Authwall' or login screen first
         await expect(linkedinPage).toHaveURL(/.*linkedin.com\/company\/sauce-labs/);
         await linkedinPage.close();
-    });
+    })
+
+})
