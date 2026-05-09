@@ -12,7 +12,8 @@
     "test:qa_cr_he": "cross-env ENV_NAME=qa playwright test --headed --project=chromium",
     "clean:allure": "rimraf allure-results allure-report",
     "test:allure": "npm run clean:allure && npx playwright test",
-    "report:allure": "npx allure serve allure-results"
+    "report:allure": "npx allure serve allure-results",
+    "generate:allure": "allure generate allure-results --clean -o allure-report"
   },
   "keywords": [],
   "author": "",
