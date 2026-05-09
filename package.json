@@ -14,6 +14,7 @@
     "test:allure": "npm run clean:allure && npx playwright test",
     "report:allure": "npx allure serve allure-results",
     "generate:allure": "allure generate allure-results --clean -o allure-report"
+    
   },
   "keywords": [],
   "author": "",
