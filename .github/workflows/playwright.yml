@@ -27,7 +27,7 @@ jobs:
       run: npm run clean:allure
 
     - name: Run Playwright tests
-      run: xvfb-run npm run test:demo_cr_he
+      run: npm run test:demo_cr_he
       env:
         BASE_URL: "https://www.saucedemo.com/"
         USER_NAME: "standard_user"
