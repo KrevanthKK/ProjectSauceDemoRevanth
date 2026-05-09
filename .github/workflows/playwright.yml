@@ -28,6 +28,11 @@ jobs:
 
     - name: Run Playwright tests
       run: xvfb-run npm run test:demo_cr_he
+      env:
+        BASE_URL: "https://www.saucedemo.com/"
+        USER_NAME: "standard_user"
+        PASSWORD: "secret_sauce"
+        PRODUCTPAGE_URL: "https://www.saucedemo.com/inventory.html"
 
     - name: Generate Allure Report
       if: ${{ !cancelled() }}
