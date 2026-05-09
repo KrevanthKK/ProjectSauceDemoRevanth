@@ -22,6 +22,8 @@ export const test = baseExtend.extend<hooksFixture>({
         //await sideBar.clickCrossButton()
         await use()
     },
+
+
     cartFinishPage: async ({ gotoURL, productsPage, cartPage, checkOutFillInfo, checkOutOverView }, use) => {
         const item = data.productItemVerification
         await productsPage.addProductOnProductName(item.product_name)

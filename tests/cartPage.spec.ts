@@ -46,6 +46,7 @@ test("Cart Persistence & Removal: 2 items to 1 and session persistence", { tag: 
     
     // 1. Add two items to the cart
     await productsPage.addProductOnProductName("Sauce Labs Backpack");
+
     await productsPage.addProductOnProductName("Sauce Labs Bike Light");
     await expect(productsPage.shoppingCartBadge).toHaveText("2");
 

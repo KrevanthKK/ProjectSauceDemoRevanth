@@ -16,7 +16,6 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
@@ -31,6 +30,7 @@ jobs:
       run: npm run clean:allure
 
     - name: Run Playwright tests
+      # Added 'blob' reporter here to ensure merging works
       run: xvfb-run npm run test:demo -- --shard=${{ matrix.shard }}/4 --reporter=blob,line --retries=2
       env:
         BASE_URL: "https://www.saucedemo.com/"
@@ -60,6 +60,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    
+    # FIX 1: You MUST set up Java here for Allure to work
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
@@ -81,11 +89,13 @@ jobs:
         pattern: allure-results-*
         merge-multiple: true
 
+    # FIX 2: Ensure the directory exists before merging
     - name: Merge Playwright HTML Report
       run: npx playwright merge-reports --reporter html ./all-blob-reports
 
+    # FIX 3: Use 'npx allure' to ensure the binary is pulled correctly
     - name: Generate Combined Allure Report
-      run: npx allure-commandline generate allure-results --clean -o allure-report
+      run: npx allure generate allure-results --clean -o allure-report
 
     - name: Upload Final Playwright Report
       uses: actions/upload-artifact@v4
