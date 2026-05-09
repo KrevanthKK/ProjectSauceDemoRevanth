@@ -30,8 +30,8 @@ jobs:
       run: npm run test:demo_cr_he
       env:
         BASE_URL: "https://www.saucedemo.com/"
-        USER_NAME: "standard_user"
-        PASSWORD: "secret_sauce"
+        USER_NAME: ${{ secrets.USER_NAME }}
+        PASSWORD: ${{ secrets.PASSWORD }}
         PRODUCTPAGE_URL: "https://www.saucedemo.com/inventory.html"
 
     - name: Generate Allure Report

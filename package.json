@@ -23,7 +23,9 @@
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.6.0",
     "allure": "^3.6.2",
-    "allure-playwright": "^3.7.1"
+    "allure-commandline": "^2.32.2",
+    "allure-playwright": "^3.7.1",
+    "rimraf": "^6.0.1"
   },
   "dependencies": {
     "cross-env": "^10.1.0",
