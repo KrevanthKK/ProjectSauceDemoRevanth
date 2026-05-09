@@ -1,0 +1,63 @@
+{
+    "produce_Name": [
+        {
+            "product": "Sauce Labs Backpack"
+        },
+        {
+            "product": "Sauce Labs Fleece Jacket"
+        }
+    ],
+    "checkingRemoveButton": "Sauce Labs Onesie",
+
+    "ProductDetailsCheck": [
+        {
+            "product_name": "Sauce Labs Backpack",
+            "product_desc": "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection.",
+            "product_price": 29.99
+        },
+        {
+            "product_name": "Sauce Labs Bike Light",
+            "product_desc": "A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included.",
+            "product_price": 9.99
+        },
+        {
+            "product_name": "Sauce Labs Bolt T-Shirt",
+            "product_desc": "Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt.",
+            "product_price": 15.99
+        },
+        {
+            "product_name": "Sauce Labs Fleece Jacket",
+            "product_desc": "It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office.",
+            "product_price": 49.99
+        },
+        {
+            "product_name": "Sauce Labs Onesie",
+            "product_desc": "Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel.",
+            "product_price": 7.99
+        },
+        {
+            "product_name": "Test.allTheThings() T-Shirt (Red)",
+            "product_desc": "This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton.",
+            "product_price": 15.99
+        }
+    ],
+    "productItemVerification": {
+        
+        "product_name": "Test.allTheThings() T-Shirt (Red)",
+        "product_desc": "This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton.",
+        "product_price": "$15.99"
+    },
+    "validLoginUsers": [
+        { "username": "standard_user", "password": "secret_sauce", "description": "Standard User" },
+        { "username": "problem_user", "password": "secret_sauce", "description": "Problem User" },
+        { "username": "performance_glitch_user", "password": "secret_sauce", "description": "Performance Glitch User" }
+    ],
+    "negativeLoginTests": [
+        { "username": "locked_out_user", "password": "secret_sauce", "expectedError": "Epic sadface: Sorry, this user has been locked out.", "description": "Locked Out User" },
+        { "username": "invalid_user", "password": "wrong_password", "expectedError": "Epic sadface: Username and password do not match any user in this service", "description": "Invalid Credentials" },
+        { "username": "standard_user", "password": "wrong_password", "expectedError": "Epic sadface: Username and password do not match any user in this service", "description": "Valid Username with Wrong Password" },
+        { "username": "", "password": "", "expectedError": "Epic sadface: Username is required", "description": "Both Fields Empty" },
+        { "username": "standard_user", "password": "", "expectedError": "Epic sadface: Password is required", "description": "Empty Password Field" },
+        { "username": "", "password": "secret_sauce", "expectedError": "Epic sadface: Username is required", "description": "Empty Username Field" }
+    ]
+}
