@@ -20,6 +20,7 @@ export default class LoginPage implements ILoginActions,ILoginNavigation{
     readonly loginButton: Locator
     readonly errorMessage: Locator
     
+    
 
     constructor(page:Page){
         this.page = page
@@ -27,6 +28,8 @@ export default class LoginPage implements ILoginActions,ILoginNavigation{
         this.userPasswordInput = page.locator('[data-test="password"]')
         this.loginButton = page.locator('[data-test="login-button"]')
         this.errorMessage = page.locator('[data-test="error"]')
+       
+
     }
 
     /**Open Sauce demo URL

@@ -97,10 +97,10 @@ test('Verify the "Swag Labs" logo and the "Products" page title are visible', { 
     await productsPage.verifyProductPageTitle()
 })
 
-test('Product Detail Navigation', { tag: ['@QA', '@UAT', '@smoke', '@navigation', '@productDetail'] }, async ({ productsPage, gotoURL, productItemPage }) => {
+test('Product Detail Navigation', { tag: ['@QA', '@UAT', '@smoke', '@navigation', '@productDetail'] }, async ({ productsPage, gotoURL, produtItemPage }) => {
 
     await productsPage.clickUsingProductName("Test.allTheThings() T-Shirt (Red)")
-    expect(productItemPage.pageURL()).toBeTruthy()
+    expect(produtItemPage.pageURL()).toBeTruthy()
 })
 
 test("Verify that every product has a valid image displayed", { tag: ['@QA', '@UAT', '@regression', '@ui'] }, async ({ productsPage, gotoURL }) => {

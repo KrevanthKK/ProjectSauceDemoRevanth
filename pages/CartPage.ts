@@ -47,7 +47,9 @@ export default class CartPage extends ProductLogo implements ICartPage{
     async isOnCartPage(): Promise<boolean>{
         return this.page.url().includes('/cart.html')
     }
-
+    /**
+     * Click Remove Button
+     */
     async clickCartRemoveButton(): Promise<void> {
         await this.cartRemoveButton.click()
     }

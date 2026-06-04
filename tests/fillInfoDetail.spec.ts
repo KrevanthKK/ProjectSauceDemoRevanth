@@ -27,7 +27,7 @@ test.describe("Verify CheckOut Inoformation fill page", async () => {
             userData.zipcode
         );
         expect(await checkOutOverView.isInOverviewPage()).toBeTruthy()
-        
+
     });
 
     test("verify user navigate back to the cart page", { tag: ['@QA', '@UAT', '@regression', '@checkout', '@navigation'] }, async ({ checkOutFillInfoFixture, cartPage }) => {
@@ -49,7 +49,7 @@ test.describe("Checkout Sad Path Validations", () => {
 
     test("Should show error when Zip Code is missing", { tag: ['@QA', '@UAT', '@regression', '@checkout', '@validation', '@negativeTest'] }, async ({ checkOutFillInfoFixture }) => {
         const faker = FakerUtils.generateUserData();
-        
+
         // Fill only Name and Last Name
         await checkOutFillInfoFixture.firtNameInputField.fill(faker.firstName);
         await checkOutFillInfoFixture.lastNameInputField.fill(faker.lastName);
@@ -63,7 +63,7 @@ test.describe("Checkout Sad Path Validations", () => {
 
     test("Should show error when Last Name is missing", { tag: ['@QA', '@UAT', '@regression', '@checkout', '@validation', '@negativeTest'] }, async ({ checkOutFillInfoFixture }) => {
         const faker = FakerUtils.generateUserData();
-        
+
         // Fill only Name and Last Name
         await checkOutFillInfoFixture.firtNameInputField.fill(faker.firstName);
         await checkOutFillInfoFixture.lastNameInputField.fill("");
@@ -78,7 +78,7 @@ test.describe("Checkout Sad Path Validations", () => {
 
     test("Should show error when First Name is missing", { tag: ['@QA', '@UAT', '@regression', '@checkout', '@validation', '@negativeTest'] }, async ({ checkOutFillInfoFixture }) => {
         const faker = FakerUtils.generateUserData();
-        
+
         // Fill only Name and Last Name
         await checkOutFillInfoFixture.firtNameInputField.fill("");
         await checkOutFillInfoFixture.lastNameInputField.fill(faker.firstName);
@@ -91,7 +91,13 @@ test.describe("Checkout Sad Path Validations", () => {
     });
 });
 
-test("Verify social media icons in Personal Info page", { tag: ['@QA', '@UAT', '@regression'] }, async ({ footerModule, context, checkOutFillInfoFixture }) => {
+test.describe("Footer Module Validations in fill Info item page", () => {
+
+
+    test("Verify footer copyright text displays correctly", { tag: ['@QA', '@UAT', '@regression', '@footer', '@ui'] }, async ({ footerModule, checkOutFillInfoFixture }) => {
+        await footerModule.isFooternoteAvailable();
+    });
+    test("Verify social media icons in Personal Info page", { tag: ['@QA', '@UAT', '@regression'] }, async ({ footerModule, context, checkOutFillInfoFixture }) => {
 
         // 1. Validate Twitter (X)
         const [twitterPage] = await Promise.all([
@@ -117,4 +123,6 @@ test("Verify social media icons in Personal Info page", { tag: ['@QA', '@UAT', '
         // LinkedIn often shows an 'Authwall' or login screen first
         await expect(linkedinPage).toHaveURL(/.*linkedin.com\/company\/sauce-labs/);
         await linkedinPage.close();
-    });
+    })
+
+})

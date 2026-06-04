@@ -22,15 +22,15 @@ test.describe("Cart Content Validation", () => {
 
     test("Verify: The application redirects you back to the main inventory page", { tag: ['@QA', '@UAT', '@regression', '@navigation', '@cart'] }, async ({ productsPage, cartPageFixture }) => {
         await cartPageFixture.clickContinueShoppingButton()
-        expect(productsPage.isOnProductPage()).toBeTruthy
+        await expect(productsPage.productName.first()).toBeVisible()
     });
 
     test('Verify: The application redirects you to the "Checkout: Your Information" step.', { tag: ['@QA', '@UAT', '@smoke', '@regression', '@navigation', '@checkout', '@cart'] }, async ({ cartPageFixture, checkOutFillInfo }) => {
         await cartPageFixture.clickCheckOutButton()
-        expect(checkOutFillInfo.isOnPersonInfoCartPage()).toBeTruthy()
+        expect(await checkOutFillInfo.isOnPersonInfoCartPage()).toBeTruthy()
     });
 
-    test("Cart Persistence: Refresh the page and verify the item remains in the cart (testing session storage).", { tag: ['@QA', '@UAT', '@regression', '@cart', '@sessionStorage'] }, async ({ cartPageFixture }) => {
+    test("Cart Persistence: Refresh the page and verify the item remains in the cart (testing session storage).", { tag: ['@QA', '@UAT', '@regression', '@cart', '@sessionStorage'] }, async ({ cartPageFixture,page }) => {
         await cartPageFixture.pageReload()
         await expect.soft(cartPageFixture.shoppingBadge).toHaveText("1");
     })
@@ -46,6 +46,7 @@ test("Cart Persistence & Removal: 2 items to 1 and session persistence", { tag: 
     
     // 1. Add two items to the cart
     await productsPage.addProductOnProductName("Sauce Labs Backpack");
+
     await productsPage.addProductOnProductName("Sauce Labs Bike Light");
     await expect(productsPage.shoppingCartBadge).toHaveText("2");
 
@@ -66,7 +67,13 @@ test("Cart Persistence & Removal: 2 items to 1 and session persistence", { tag: 
     await expect(cartPage.productName).toHaveCount(1);
 });
 
-test("Verify social media icons in Cart Finish page", { tag: ['@QA', '@UAT', '@regression'] }, async ({ footerModule, context, cartPageFixture }) => {
+test.describe("Footer Module Validations in checkout finish page", () => {
+
+
+    test("Verify footer copyright text displays correctly", { tag: ['@QA', '@UAT', '@regression', '@footer', '@ui'] }, async ({ footerModule, cartPageFixture }) => {
+        await footerModule.isFooternoteAvailable();
+    });
+    test("Verify social media icons in checkout finish page", { tag: ['@QA', '@UAT', '@regression'] }, async ({ footerModule, context, cartPageFixture }) => {
 
         // 1. Validate Twitter (X)
         const [twitterPage] = await Promise.all([
@@ -92,4 +99,6 @@ test("Verify social media icons in Cart Finish page", { tag: ['@QA', '@UAT', '@r
         // LinkedIn often shows an 'Authwall' or login screen first
         await expect(linkedinPage).toHaveURL(/.*linkedin.com\/company\/sauce-labs/);
         await linkedinPage.close();
-    });
+    })
+
+})

@@ -62,15 +62,12 @@ test("Complete 'Add to Cart' flow and navigation check", { tag: ['@QA', '@UAT', 
 
 test.describe("Footer Module Validations in Product item page", () => {
 
-    test.beforeEach(async ({ productsPage, gotoURL }) => {
-        await productsPage.clickUsingProductName(data.productItemVerification.product_name)
-    });
 
-    test("Verify footer copyright text displays correctly", { tag: ['@QA', '@UAT', '@regression', '@footer', '@ui'] }, async ({ footerModule }) => {
+    test("Verify footer copyright text displays correctly", { tag: ['@QA', '@UAT', '@regression', '@footer', '@ui'] }, async ({ footerModule, productItemPageFixture}) => {
         await footerModule.isFooternoteAvailable();
     });
 
-    test("Verify social media icons open correct URLs in new tabs", { tag: ['@QA', '@UAT', '@regression', '@footer', '@social', '@navigation'] }, async ({ footerModule, context, page }) => {
+    test("Verify social media icons open correct URLs in new tabs", { tag: ['@QA', '@UAT', '@regression', '@footer', '@social', '@navigation'] }, async ({productItemPageFixture, footerModule, context, page }) => {
 
         // 1. Validate Twitter (X)
         const [twitterPage] = await Promise.all([

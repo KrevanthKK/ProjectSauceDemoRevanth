@@ -18,10 +18,12 @@ export const test = baseExtend.extend<hooksFixture>({
     gotoURL: async ({ loginPage, sideBar }, use) => {
         await loginPage.openProductPage()
         // Reset app state to ensure isolation in parallel runs
-        await sideBar.clickResetButton()
-        await sideBar.clickCrossButton()
+        // await sideBar.clickResetButton()
+        //await sideBar.clickCrossButton()
         await use()
     },
+
+
     cartFinishPage: async ({ gotoURL, productsPage, cartPage, checkOutFillInfo, checkOutOverView }, use) => {
         const item = data.productItemVerification
         await productsPage.addProductOnProductName(item.product_name)
