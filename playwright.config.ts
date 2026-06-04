@@ -58,21 +58,21 @@ export default defineConfig({
        },
     },
 
-    {
-      name: 'firefox',
-      dependencies:["Setup"],
-      use: { ...devices['Desktop Firefox'],
-        storageState:'./playwright/.auth/auth.json'
-       },
-    },
+    // {
+    //   name: 'firefox',
+    //   dependencies:["Setup"],
+    //   use: { ...devices['Desktop Firefox'],
+    //     storageState:'./playwright/.auth/auth.json'
+    //    },
+    // },
 
-    {
-      name: 'webkit',
-      dependencies:["Setup"],
-      use: { ...devices['Desktop Safari'],
-        storageState:'./playwright/.auth/auth.json'
-       },
-    },
+    // {
+    //   name: 'webkit',
+    //   dependencies:["Setup"],
+    //   use: { ...devices['Desktop Safari'],
+    //     storageState:'./playwright/.auth/auth.json'
+    //    },
+    // },
 
     /* Test against mobile viewports. */
     // {

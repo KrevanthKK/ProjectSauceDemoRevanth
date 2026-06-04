@@ -40,6 +40,9 @@ export default class SideBar extends ProductLogo implements ISideBarActions, ISi
         await this.clickSideBar()
         await this.aboutSideBar.click()
     }
+    /**
+     * Click Logout Button
+     */
     async clickLogoutButton(){
         await this.clickSideBar()
         await this.logoutSideBar.click()
