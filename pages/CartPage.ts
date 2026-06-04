@@ -45,6 +45,9 @@ export default class CartPage extends ProductLogo implements ICartPage{
     async clickCheckOutButton():Promise<void>{
         await this.checkOutButton.click()
     }
+    /**
+     * Click Continue shopping button
+     */
     async clickContinueShoppingButton():Promise<void>{
         await this.continueShoppingButton.click()
     }
