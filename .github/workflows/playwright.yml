@@ -52,7 +52,7 @@ jobs:
 
     - name: Install Playwright System Dependencies Only (cache hit)
       if: steps.playwright-cache.outputs.cache-hit == 'true'
-      run: npx playwright install-deps --with-deps
+      run: npx playwright install-deps chromium firefox webkit
 
     - name: Clean Allure results
       run: npm run clean:allure
