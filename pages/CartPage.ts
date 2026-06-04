@@ -38,6 +38,10 @@ export default class CartPage extends ProductLogo implements ICartPage{
 
     }
 
+    /**
+     * Click CheckOut button
+     * 
+     */
     async clickCheckOutButton():Promise<void>{
         await this.checkOutButton.click()
     }
