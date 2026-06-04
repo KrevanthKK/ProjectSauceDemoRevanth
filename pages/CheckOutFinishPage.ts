@@ -7,6 +7,10 @@ interface ICheckOutFinishPage{
     verifyPonyExpressLogo() : Promise<boolean>
 }
 
+/**
+ * Cheicking page title and dispatch message
+ */
+
 interface ICheckOutFinishPageValidation{
     verifyPageTitle():Promise<string>
     getDispatchMessage():Promise<string>
