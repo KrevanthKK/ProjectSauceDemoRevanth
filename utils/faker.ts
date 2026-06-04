@@ -8,7 +8,12 @@ export interface UserData {
   
 }
 
+
 export class FakerUtils {
+    /**
+     * 
+     * @returns array of data
+     */
     static generateUserData(): UserData {
         return {
             firstName: faker.person.firstName(),
