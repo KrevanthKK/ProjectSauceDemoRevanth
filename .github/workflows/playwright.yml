@@ -21,27 +21,24 @@ jobs:
       with:
         node-version: lts/*
 
-    - name: Cache Node modules
-      uses: actions/cache@v4
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+    - name: Install dependencies
+      run: npm install
 
     - name: Cache Playwright Browsers
       uses: actions/cache@v4
+      id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-playwright-
 
-    - name: Install dependencies
-      run: npm install
-
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      run: npx playwright install chromium
+
+    - name: Install Playwright System Dependencies
+      run: npx playwright install-deps chromium
 
     - name: Clean Allure results
       run: npm run clean:allure
