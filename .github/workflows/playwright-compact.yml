@@ -146,7 +146,8 @@ jobs:
           for dir in all-reports/reports-*/allure-results; do
             if [ -d "$dir" ] && [ -n "$(ls -A "$dir" 2>/dev/null)" ]; then
               echo "✓ Processing shard: $dir ($(find "$dir" -type f | wc -l) files)"
-              find "$dir" -type f -exec cp -n {} merged-allure-results/ \; || true
+              # rsync is portable and handles duplicate files without warnings
+              rsync -a "$dir"/ merged-allure-results/
               ((SHARD_COUNT++))
             else
               echo "⚠ Skipping empty/missing: $dir"
@@ -166,7 +167,7 @@ jobs:
             echo "⚠ No Allure results found — skipping report generation"
             mkdir -p allure-report
           fi
-
+        continue-on-error: true
       - name: Upload merged Playwright report
         uses: actions/upload-artifact@v4
         if: always()
