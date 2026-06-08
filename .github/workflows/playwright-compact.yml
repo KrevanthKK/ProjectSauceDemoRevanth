@@ -19,6 +19,7 @@ jobs:
       matrix:
         shard: [1, 2, 3]
         total-shards: [3]
+      fail-fast: false
     
     steps:
       - uses: actions/checkout@v4
@@ -28,14 +29,41 @@ jobs:
           cache: 'npm'
       
       - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: rm -rf allure-results
+      
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npm list @playwright/test --depth=0 | grep @playwright/test | awk -F@ '{print $NF}')" >> $GITHUB_OUTPUT
+      
+      - name: Cache Playwright Browsers
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ steps.playwright-version.outputs.version }}-${{ runner.os }}
+      
+      - name: Install Playwright Browsers with dependencies
+        if: steps.cache-playwright.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+      
+      - name: Install system dependencies only (if cache hit)
+        if: steps.cache-playwright.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
+      
+      - run: rm -rf allure-results blob-report playwright-report
       
       - name: Run tests - Shard ${{ matrix.shard }}/3
         run: npm test -- --shard=${{ matrix.shard }}/3
         env:
           USER_NAME: ${{ secrets.USER_NAME }}
           PASSWORD: ${{ secrets.PASSWORD }}
+      
+      - name: List artifacts before upload
+        if: always()
+        run: |
+          echo "=== Checking artifacts to upload ==="
+          ls -lah playwright-report/ 2>/dev/null | head -5 || echo "No playwright-report"
+          ls -lah blob-report/ 2>/dev/null | head -5 || echo "No blob-report"
+          ls -lah allure-results/ 2>/dev/null | head -5 || echo "No allure-results"
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -48,6 +76,7 @@ jobs:
             allure-results/
           retention-days: 1
           if-no-files-found: ignore
+        timeout-minutes: 10
 
   merge-reports:
     name: Merge & Upload Reports
