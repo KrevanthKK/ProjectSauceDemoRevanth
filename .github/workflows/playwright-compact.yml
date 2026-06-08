@@ -93,73 +93,92 @@ jobs:
       
       - run: npm ci
       
-      - name: Download artifacts
+      - name: Download all shard artifacts
         uses: actions/download-artifact@v4
         with:
           path: all-reports
           pattern: reports-*
-      
-      - name: Flatten blob reports
+          merge-multiple: false
+
+      - name: Debug downloaded structure
         run: |
-          echo "=== Checking downloaded artifacts ==="
-          ls -la all-reports/ || true
-          find all-reports -type f -name "*.jsonl" 2>/dev/null | head -20
-          
-          echo "=== Flattening blob reports ==="
+          echo "=== Full artifact structure ==="
+          find all-reports -type f | sort
+      
+      - name: Merge Playwright blob reports
+        run: |
+          echo "=== Collecting blob report files ==="
           mkdir -p blob-reports-merged
-          find all-reports -name "*.jsonl" -path "*/blob-report/*" -exec cp {} blob-reports-merged/ \; || true
-          
-          echo "=== Flattened reports ==="
-          ls -la blob-reports-merged/ 2>/dev/null | tail -5
-          echo "Total blob report files: $(find blob-reports-merged -name "*.jsonl" | wc -l)"
-      
-      - name: Merge Playwright reports
-        run: |
-          BLOB_COUNT=$(find blob-reports-merged -name "*.jsonl" 2>/dev/null | wc -l)
-          echo "Found $BLOB_COUNT blob report files from 3 shards"
-          
+
+          # Playwright blob reporter outputs .zip files in newer versions, .jsonl in older
+          find all-reports -path "*/blob-report/*" \( -name "*.zip" -o -name "*.jsonl" \) \
+            -exec cp {} blob-reports-merged/ \; || true
+
+          BLOB_COUNT=$(find blob-reports-merged -type f | wc -l)
+          echo "Found $BLOB_COUNT blob report files"
+
           if [ "$BLOB_COUNT" -gt 0 ]; then
-            echo "Merging Playwright reports..."
+            echo "Merging Playwright HTML report from all shards..."
             npx playwright merge-reports --reporter html blob-reports-merged
-            echo "✓ Playwright merge completed"
+            echo "✓ Playwright HTML report merged"
           else
-            echo "No blob reports found, creating empty report"
+            echo "⚠ No blob reports found — creating empty placeholder"
             mkdir -p playwright-report
           fi
         continue-on-error: true
-      
-      - name: Merge Allure reports
+
+      - name: Merge Allure results and generate report
         run: |
-          echo "=== Merging Allure reports from 3 shards ==="
+          echo "=== Collecting Allure results from all shards ==="
           mkdir -p merged-allure-results
-          
+
           SHARD_COUNT=0
           for dir in all-reports/reports-*/allure-results; do
-            if [ -d "$dir" ]; then
-              echo "Processing: $dir"
-              find "$dir" -type f -exec cp {} merged-allure-results/ \; || true
+            if [ -d "$dir" ] && [ -n "$(ls -A "$dir" 2>/dev/null)" ]; then
+              echo "✓ Processing shard: $dir"
+              find "$dir" -type f -exec cp -n {} merged-allure-results/ \; || true
               ((SHARD_COUNT++))
+            else
+              echo "⚠ Skipping empty/missing: $dir"
             fi
           done
-          
-          echo "✓ Merged $SHARD_COUNT shards"
-          echo "Generating Allure report..."
-          npx allure generate merged-allure-results --clean -o allure-report || true
-          echo "✓ Allure report generated"
-      
-      - name: Upload final reports
+
+          RESULT_COUNT=$(find merged-allure-results -type f | wc -l)
+          echo "Total merged Allure result files: $RESULT_COUNT from $SHARD_COUNT shards"
+
+          if [ "$RESULT_COUNT" -gt 0 ]; then
+            echo "Generating Allure HTML report..."
+            ./node_modules/.bin/allure generate merged-allure-results --clean -o allure-report
+            echo "✓ Allure report generated: $(find allure-report -type f | wc -l) files"
+          else
+            echo "⚠ No Allure results to merge — skipping report generation"
+            mkdir -p allure-report
+          fi
+        continue-on-error: true
+
+      - name: Upload merged Playwright report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: final-reports
-          path: |
-            playwright-report/
-            allure-report/
+          name: playwright-html-report
+          path: playwright-report/
           retention-days: 30
-      
+          if-no-files-found: warn
+
+      - name: Upload merged Allure report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-html-report
+          path: allure-report/
+          retention-days: 30
+          if-no-files-found: warn
+
       - name: Report Summary
+        if: always()
         run: |
           echo "=== CI/CD Report Summary ==="
-          echo "✓ Tests ran on 3 shards"
-          echo "✓ Playwright reports merged: $(find playwright-report -type f 2>/dev/null | wc -l) files"
-          echo "✓ Allure reports merged: $(find allure-report -type f 2>/dev/null | wc -l) files"
-          echo "✓ Final reports uploaded as: final-reports"
+          echo "Playwright report files : $(find playwright-report -type f 2>/dev/null | wc -l)"
+          echo "Allure report files     : $(find allure-report -type f 2>/dev/null | wc -l)"
+          echo "Artifacts uploaded      : playwright-html-report, allure-html-report"
+
