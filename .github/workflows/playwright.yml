@@ -1,78 +1,237 @@
 name: Playwright Tests
 
+# Triggers this workflow on push to main/develop branches and on pull requests
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
 
+# ============================================================================
+# WORKFLOW OVERVIEW
+# ============================================================================
+# This CI/CD pipeline runs Playwright tests with the following features:
+# 1. SHARDING: Tests are split across 3 parallel shards for faster execution
+# 2. PLAYWRIGHT REPORTS: HTML reports merged from all shards
+# 3. ALLURE REPORTING: Detailed test analytics and trends
+# ============================================================================
+
 jobs:
+  # ========================================================================
+  # JOB 1: test (Sharded Playwright Tests)
+  # ========================================================================
+  # Runs playwright tests split across 3 shards (parallel execution)
+  # Each shard runs: npm test -- --shard=X/3
+  # References: package.json "test" script
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x]
+        shard: [1, 2, 3]          # Distribute tests across 3 shards
+        total-shards: [3]         # Total number of shards
     
     steps:
+      # Checkout the repository code
       - uses: actions/checkout@v4
       
+      # Setup Node.js with npm cache for faster dependency installation
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
       
+      # Install project dependencies (npm ci for CI environments)
       - name: Install dependencies
         run: npm ci
       
+      # Install Playwright browsers and system dependencies
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
       
-      - name: Run Playwright tests
-        run: npm test
+      # Clean allure-results to avoid stale data from previous runs
+      - name: Clean Allure results
+        run: rm -rf allure-results
       
+      # Run Playwright tests for this shard
+      # Uses "npm test" from package.json: "test": "playwright test"
+      - name: Run Playwright tests - Shard ${{ matrix.shard }} of ${{ matrix.total-shards }}
+        run: npm test -- --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
+      
+      # Upload Playwright HTML report from this shard (30 day retention)
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ matrix.node-version }}
+          name: playwright-report-shard-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 30
       
-      - name: Upload test results
+      # Upload blob report for merging with other shards (1 day retention)
+      - name: Upload blob report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.node-version }}
-          path: test-results/
-          retention-days: 30
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report
+          retention-days: 1
+      
+      # Upload Allure results from this shard for merging (1 day retention)
+      - name: Upload Allure results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-${{ matrix.shard }}
+          path: allure-results/
+          retention-days: 1
 
-  test-allure:
-    timeout-minutes: 60
+  # ========================================================================
+  # JOB 2: merge-reports (Merge Playwright Test Reports)
+  # ========================================================================
+  # Waits for all shards to complete, then merges their Playwright reports
+  # Generates a single HTML report with results from all shards
+  merge-reports:
+    name: Merge Playwright Reports
+    if: always()
+    needs: test
     runs-on: ubuntu-latest
     
     steps:
+      # Checkout repository
       - uses: actions/checkout@v4
       
+      # Setup Node.js
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: 'npm'
       
+      # Install dependencies
       - name: Install dependencies
         run: npm ci
       
+      # Download all blob reports from the 3 shards
+      - name: Download blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+      
+      # Merge blob reports from all shards and generate HTML report
+      - name: Merge reports
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+      
+      # Upload final merged Playwright HTML report (14 day retention)
+      - name: Upload merged report
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-html-report
+          path: playwright-report
+          retention-days: 14
+
+  # ========================================================================
+  # JOB 3: merge-allure-reports (Merge Allure Test Reports)
+  # ========================================================================
+  # Waits for all shards to complete, then merges their Allure results
+  # Generates detailed Allure analytics report with test trends and statistics
+  merge-allure-reports:
+    name: Merge Allure Reports
+    if: always()
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Checkout repository
+      - uses: actions/checkout@v4
+      
+      # Setup Node.js
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      # Install dependencies
+      - name: Install dependencies
+        run: npm ci
+      
+      # Install Allure commandline tool globally for report generation
+      - name: Install Allure commandline
+        run: npm install -g allure-commandline
+      
+      # Download Allure results from all 3 shards
+      - name: Download allure results from all shards
+        uses: actions/download-artifact@v4
+        with:
+          path: all-allure-results
+          pattern: allure-results-*
+      
+      # Merge all Allure results into a single directory
+      # This combines test execution data from all shards
+      - name: Merge Allure results
+        run: |
+          mkdir -p merged-allure-results
+          for dir in all-allure-results/allure-results-*; do
+            cp -r "$dir"/* merged-allure-results/ || true
+          done
+      
+      # Generate Allure HTML report from merged results
+      # Uses: "generate:allure": "allure generate allure-results --clean -o allure-report" from package.json
+      - name: Generate merged Allure report
+        run: allure generate merged-allure-results --clean -o allure-report
+      
+      # Upload final merged Allure report (30 day retention)
+      - name: Upload merged Allure report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-report-merged
+          path: allure-report/
+          retention-days: 30
+
+  # ========================================================================
+  # JOB 4: test-allure (Alternative: Full Allure Test Run)
+  # ========================================================================
+  # Optional job for full test run with only Allure reporting
+  # Useful for dedicated Allure reporting when sharding is not needed
+  # Uses: "test:allure": "npm run clean:allure && npx playwright test" from package.json
+  test-allure:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Checkout repository
+      - uses: actions/checkout@v4
+      
+      # Setup Node.js
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      # Install dependencies
+      - name: Install dependencies
+        run: npm ci
+      
+      # Install Playwright browsers and system dependencies
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
       
+      # Run all tests with Allure reporter enabled
+      # This script: cleans allure-results, then runs "playwright test"
       - name: Run tests with Allure
         run: npm run test:allure
       
+      # Generate Allure HTML report from collected results
+      # This script: "allure generate allure-results --clean -o allure-report"
       - name: Generate Allure report
         run: npm run generate:allure
       
+      # Upload Allure HTML report (30 day retention)
       - name: Upload Allure report
         uses: actions/upload-artifact@v4
         if: always()

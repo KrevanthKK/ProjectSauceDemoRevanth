@@ -1,5 +1,5 @@
 import { test as baseExtend } from "../fixture/pom-fixture"
-import { FakerUtils } from "../utilis/faker"
+import { FakerUtils } from "../utils/faker"
 import data from "../test-data/testdata.json"
 import { CheckOutOverview } from "../pages/CheckOutOverview"
 import CartPage from "../pages/CartPage"

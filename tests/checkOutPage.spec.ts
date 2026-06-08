@@ -1,6 +1,6 @@
 import { test, expect } from "../fixture/hooks-fixture"
 import data from "../test-data/testdata.json"
-import { FakerUtils } from "../utilis/faker"
+import { FakerUtils } from "../utils/faker"
 
 test.describe("Checkout Overviw : Item Details Validation", () => {
 

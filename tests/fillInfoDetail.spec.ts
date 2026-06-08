@@ -1,5 +1,5 @@
 import { test, expect } from "../fixture/hooks-fixture"
-import { FakerUtils } from "../utilis/faker"
+import { FakerUtils } from "../utils/faker"
 import data from "../test-data/testdata.json"
 
 
