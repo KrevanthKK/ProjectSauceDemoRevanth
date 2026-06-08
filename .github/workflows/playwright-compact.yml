@@ -44,9 +44,10 @@ jobs:
           name: reports-${{ matrix.shard }}
           path: |
             playwright-report/
-            blob-report
+            blob-report/
             allure-results/
           retention-days: 1
+          if-no-files-found: ignore
 
   merge-reports:
     name: Merge & Upload Reports
