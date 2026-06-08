@@ -1,183 +1,82 @@
 name: Playwright Tests
- 
+
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main, master ]
- 
+    branches: [ main, develop ]
+
 jobs:
   test:
-    timeout-minutes: 30          # reduced from 60 — chromium only = faster
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
- 
+        node-version: [18.x, 20.x]
+    
     steps:
-    - uses: actions/checkout@v4
- 
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
- 
-    - name: Cache Node modules
-      uses: actions/cache@v4
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
- 
-    - name: Install dependencies
-      run: npm ci                 # faster than npm install — uses lock file directly
- 
-    # Cache chromium only — firefox/webkit removed to save time
-    - name: Cache Playwright Browsers
-      uses: actions/cache@v4
-      id: playwright-cache
-      with:
-        path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-playwright-chromium-
- 
-    # Cache miss — full install
-    - name: Install Playwright Browsers (cache miss)
-      if: steps.playwright-cache.outputs.cache-hit != 'true'
-      run: |
-        npx playwright install chromium
-        npx playwright install-deps chromium
- 
-    # Cache hit — system deps only (much faster)
-    - name: Install System Dependencies (cache hit)
-      if: steps.playwright-cache.outputs.cache-hit == 'true'
-      run: npx playwright install-deps chromium
- 
-    - name: Clean Allure results
-      run: npm run clean:allure
- 
-    - name: npm run test
-      run: xvfb-run npm run test:demo -- --shard=${{ matrix.shard }}/4 --reporter=blob,line --retries=2
-      env:
-        BASE_URL: "https://www.saucedemo.com/"
-        USER_NAME: ${{ secrets.USER_NAME }}
-        PASSWORD: ${{ secrets.PASSWORD }}
-        PRODUCTPAGE_URL: "https://www.saucedemo.com/inventory.html"
- 
-    - name: Upload Blob Report
-      uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: all-blob-reports-${{ matrix.shard }}
-        path: blob-report
-        retention-days: 1
- 
-    - name: Upload Allure Results
-      uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: allure-results-${{ matrix.shard }}
-        path: allure-results
-        retention-days: 1
- 
-  merge-reports:
-    if: ${{ !cancelled() }}
-    needs: [test]
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      
+      - name: Run Playwright tests
+        run: npm test
+      
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.node-version }}
+          path: playwright-report/
+          retention-days: 30
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: test-results/
+          retention-days: 30
+
+  test-allure:
+    timeout-minutes: 60
     runs-on: ubuntu-latest
- 
+    
     steps:
-    - uses: actions/checkout@v4
- 
-    - name: Set up JDK (required for Allure)
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
- 
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
- 
-    - name: Cache Node modules
-      uses: actions/cache@v4
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
- 
-    - name: Install dependencies
-      run: npm ci
- 
-    # merge-reports needs only chromium — no full browser install
-    - name: Cache Playwright Browsers (merge job)
-      uses: actions/cache@v4
-      id: merge-playwright-cache
-      with:
-        path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-playwright-chromium-
- 
-    - name: Install Playwright Browser (merge job - cache miss)
-      if: steps.merge-playwright-cache.outputs.cache-hit != 'true'
-      run: |
-        npx playwright install chromium
-        npx playwright install-deps chromium
- 
-    - name: Install System Dependencies (merge job - cache hit)
-      if: steps.merge-playwright-cache.outputs.cache-hit == 'true'
-      run: npx playwright install-deps chromium
- 
-    - name: Download all Blob Reports
-      uses: actions/download-artifact@v4
-      with:
-        path: all-blob-reports
-        pattern: all-blob-reports-*
-        merge-multiple: true
- 
-    - name: Download all Allure Results
-      uses: actions/download-artifact@v4
-      with:
-        path: downloaded-allure
-        pattern: allure-results-*
-        merge-multiple: true
- 
-    - name: Flatten Blob Reports Structure
-      run: |
-        mkdir -p flattened-blobs
-        find all-blob-reports -name "blob-report" -type d -exec cp -r {} flattened-blobs/$(basename {}) \; 2>/dev/null || true
-        find all-blob-reports -maxdepth 2 -type f -name "*.json" -exec cp {} flattened-blobs/ \; 2>/dev/null || true
- 
-    - name: Flatten Allure Results Structure
-      run: |
-        mkdir -p combined-allure-results
-        find downloaded-allure -maxdepth 2 -type f -name "*.json" -exec cp {} combined-allure-results/ \; 2>/dev/null || true
-        find downloaded-allure -maxdepth 2 -type f -name "*.txt" -exec cp {} combined-allure-results/ \; 2>/dev/null || true
- 
-    - name: Merge Playwright HTML Report
-      run: npx playwright merge-reports flattened-blobs -o playwright-report --reporter html
-      continue-on-error: true
- 
-    - name: Generate Combined Allure Report
-      run: npx allure generate combined-allure-results --clean -o allure-report
-      continue-on-error: true
- 
-    - name: Upload Final Playwright Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: final-playwright-report
-        path: playwright-report
-        retention-days: 30
- 
-    - name: Upload Final Allure Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: final-allure-report
-        path: allure-report
-        retention-days: 30
- 
-
-
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      
+      - name: Run tests with Allure
+        run: npm run test:allure
+      
+      - name: Generate Allure report
+        run: npm run generate:allure
+      
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30
