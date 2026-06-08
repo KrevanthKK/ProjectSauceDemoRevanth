@@ -138,7 +138,7 @@ jobs:
           for dir in all-reports/reports-*/allure-results; do
             if [ -d "$dir" ]; then
               echo "Processing: $dir"
-              cp -r "$dir"/* merged-allure-results/ || true
+              find "$dir" -type f -exec cp {} merged-allure-results/ \; || true
               ((SHARD_COUNT++))
             fi
           done
