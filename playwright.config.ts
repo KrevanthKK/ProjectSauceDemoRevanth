@@ -28,6 +28,12 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
+  /**
+   * On CI: if a baseline snapshot doesn't exist yet (e.g. first run on Linux),
+   * create it instead of failing. Subsequent runs will compare against the new baseline.
+   * Locally: always compare (don't silently update baselines).
+   */
+  updateSnapshots: process.env.CI ? 'missing' : 'none',
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'always' }],
