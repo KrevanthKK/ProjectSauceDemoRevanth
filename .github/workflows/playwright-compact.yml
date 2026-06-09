@@ -69,18 +69,18 @@ jobs:
       
       - run: rm -rf allure-results blob-report playwright-report
 
-      - name: Validate & create .env file from GitHub Secrets
+      - name: Validate & create .env file from GitHub Secrets/Variables
         env:
-          # DEMO secrets
-          DEMO_BASE_URL:          ${{ secrets.DEMO_BASE_URL }}
+          # DEMO — URLs can be Secrets OR Variables; credentials must be Secrets
+          DEMO_BASE_URL:          ${{ secrets.DEMO_BASE_URL        || vars.DEMO_BASE_URL }}
           DEMO_USER_NAME:         ${{ secrets.DEMO_USER_NAME }}
           DEMO_PASSWORD:          ${{ secrets.DEMO_PASSWORD }}
-          DEMO_PRODUCTPAGE_URL:   ${{ secrets.DEMO_PRODUCTPAGE_URL }}
-          # QA secrets
-          QA_BASE_URL:            ${{ secrets.QA_BASE_URL }}
+          DEMO_PRODUCTPAGE_URL:   ${{ secrets.DEMO_PRODUCTPAGE_URL || vars.DEMO_PRODUCTPAGE_URL }}
+          # QA — URLs can be Secrets OR Variables; credentials must be Secrets
+          QA_BASE_URL:            ${{ secrets.QA_BASE_URL          || vars.QA_BASE_URL }}
           QA_USER_NAME:           ${{ secrets.QA_USER_NAME }}
           QA_PASSWORD:            ${{ secrets.QA_PASSWORD }}
-          QA_PRODUCTPAGE_URL:     ${{ secrets.QA_PRODUCTPAGE_URL }}
+          QA_PRODUCTPAGE_URL:     ${{ secrets.QA_PRODUCTPAGE_URL   || vars.QA_PRODUCTPAGE_URL }}
           # Which environment to use
           ENV_NAME: ${{ github.event.inputs.environment || 'qa' }}
         run: |
