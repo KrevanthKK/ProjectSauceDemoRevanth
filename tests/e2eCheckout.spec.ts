@@ -1,5 +1,5 @@
 import { test, expect } from "../fixture/hooks-fixture"
-import { FakerUtils } from "../utilis/faker"
+import { FakerUtils } from "../utils/faker"
 
 test.describe("End to End Checkout Flow", () => {
 

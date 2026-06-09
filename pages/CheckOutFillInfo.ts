@@ -52,6 +52,9 @@ export default class CheckOutPages extends ProductLogo implements ICheckout,IChe
     async clickContinueButton(){
         await this.continueButton.click()
     }
+    /**
+     * Cancel Button..
+     */
     async clickCancelButton(){
         await this.cancelButton.click()
     }

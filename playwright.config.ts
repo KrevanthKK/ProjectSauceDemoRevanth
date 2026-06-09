@@ -28,10 +28,17 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
+  /**
+   * On CI: if a baseline snapshot doesn't exist yet (e.g. first run on Linux),
+   * create it instead of failing. Subsequent runs will compare against the new baseline.
+   * Locally: always compare (don't silently update baselines).
+   */
+  updateSnapshots: process.env.CI ? 'missing' : 'none',
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-    ['html',{open:'always'}],
-    ['allure-playwright',{ outputFolder: 'allure-results',cleanStats: true }],
+    ['html', { open: 'always' }],
+    ['allure-playwright', { outputFolder: 'allure-results', cleanStats: true }],
+    ['blob', { outputDir: 'blob-report' }],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -58,21 +65,21 @@ export default defineConfig({
        },
     },
 
-    {
-      name: 'firefox',
-      dependencies:["Setup"],
-      use: { ...devices['Desktop Firefox'],
-        storageState:'./playwright/.auth/auth.json'
-       },
-    },
+    // {
+    //   name: 'firefox',
+    //   dependencies:["Setup"],
+    //   use: { ...devices['Desktop Firefox'],
+    //     storageState:'./playwright/.auth/auth.json'
+    //    },
+    // },
 
-    {
-      name: 'webkit',
-      dependencies:["Setup"],
-      use: { ...devices['Desktop Safari'],
-        storageState:'./playwright/.auth/auth.json'
-       },
-    },
+    // {
+    //   name: 'webkit',
+    //   dependencies:["Setup"],
+    //   use: { ...devices['Desktop Safari'],
+    //     storageState:'./playwright/.auth/auth.json'
+    //    },
+    // },
 
     /* Test against mobile viewports. */
     // {

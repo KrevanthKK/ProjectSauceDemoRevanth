@@ -1,0 +1,323 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - demo
+          - qa
+
+# Allow only one Pages deployment at a time
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# Permissions needed for GitHub Pages deployment
+permissions:
+  contents: read
+  pages:    write
+  id-token: write
+
+# SETUP: Add GitHub Secrets (Settings → Secrets and variables → Actions)
+# Two sets of secrets — one per environment:
+#
+#  DEMO environment:               QA environment:
+#  ────────────────────────    ────────────────────────
+#  DEMO_BASE_URL                   QA_BASE_URL
+#  DEMO_USER_NAME                  QA_USER_NAME
+#  DEMO_PASSWORD                   QA_PASSWORD
+#  DEMO_PRODUCTPAGE_URL            QA_PRODUCTPAGE_URL
+#
+# Push/PR triggers default to DEMO. Use "Run workflow" in GitHub UI to choose QA.
+# Ref: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shard: [1, 2, 3]
+        total-shards: [3]
+      fail-fast: false
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - run: npm ci
+      
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npm list @playwright/test --depth=0 | grep @playwright/test | awk -F@ '{print $NF}')" >> $GITHUB_OUTPUT
+      
+      - name: Cache Playwright Browsers
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ steps.playwright-version.outputs.version }}-${{ runner.os }}
+      
+      - name: Install Playwright Browsers with dependencies
+        if: steps.cache-playwright.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+      
+      - name: Install system dependencies only (if cache hit)
+        if: steps.cache-playwright.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
+      
+      - run: rm -rf allure-results blob-report playwright-report
+
+      - name: Validate & create .env file from GitHub Secrets/Variables
+        env:
+          # DEMO — URLs can be Secrets OR Variables; credentials must be Secrets
+          DEMO_BASE_URL:          ${{ vars.DEMO_BASE_URL }}
+          DEMO_USER_NAME:         ${{ secrets.DEMO_USER_NAME }}
+          DEMO_PASSWORD:          ${{ secrets.DEMO_PASSWORD }}
+          DEMO_PRODUCTPAGE_URL:   ${{ vars.DEMO_PRODUCTPAGE_URL }}
+          # QA — URLs can be Secrets OR Variables; credentials must be Secrets
+          QA_BASE_URL:            ${{ vars.QA_BASE_URL }}
+          QA_USER_NAME:           ${{ secrets.QA_USER_NAME }}
+          QA_PASSWORD:            ${{ secrets.QA_PASSWORD }}
+          QA_PRODUCTPAGE_URL:     ${{ vars.QA_PRODUCTPAGE_URL }}
+          # Which environment to use
+          ENV_NAME: ${{ github.event.inputs.environment || 'qa' }}
+        run: |
+          echo "🌍 Running against environment: $ENV_NAME"
+
+          if [ "$ENV_NAME" = "qa" ]; then
+            SEL_BASE_URL="$QA_BASE_URL"
+            SEL_USER_NAME="$QA_USER_NAME"
+            SEL_PASSWORD="$QA_PASSWORD"
+            SEL_PRODUCTPAGE_URL="$QA_PRODUCTPAGE_URL"
+          else
+            SEL_BASE_URL="$DEMO_BASE_URL"
+            SEL_USER_NAME="$DEMO_USER_NAME"
+            SEL_PASSWORD="$DEMO_PASSWORD"
+            SEL_PRODUCTPAGE_URL="$DEMO_PRODUCTPAGE_URL"
+          fi
+
+          # Validate all required secrets are present
+          MISSING=""
+          [ -z "$SEL_BASE_URL" ]         && MISSING="$MISSING ${ENV_NAME^^}_BASE_URL"
+          [ -z "$SEL_USER_NAME" ]        && MISSING="$MISSING ${ENV_NAME^^}_USER_NAME"
+          [ -z "$SEL_PASSWORD" ]         && MISSING="$MISSING ${ENV_NAME^^}_PASSWORD"
+          [ -z "$SEL_PRODUCTPAGE_URL" ]  && MISSING="$MISSING ${ENV_NAME^^}_PRODUCTPAGE_URL"
+          if [ -n "$MISSING" ]; then
+            echo "❌ Missing GitHub Secrets:$MISSING"
+            echo "Go to: Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+          echo "✓ All secrets for [$ENV_NAME] are present"
+
+          # Write the env file
+          mkdir -p env-files
+          {
+            echo "BASE_URL=\"$SEL_BASE_URL\""
+            echo "USER_NAME=\"$SEL_USER_NAME\""
+            echo "PASSWORD=\"$SEL_PASSWORD\""
+            echo "PRODUCTPAGE_URL=\"$SEL_PRODUCTPAGE_URL\""
+          } > env-files/.env.$ENV_NAME
+          echo "✓ env-files/.env.$ENV_NAME created"
+          cat env-files/.env.$ENV_NAME | sed 's/=.*/=***/'  # print keys only
+
+      - name: Run tests - Shard ${{ matrix.shard }}/3
+        env:
+          ENV_NAME: ${{ github.event.inputs.environment || 'qa' }}
+        run: npm test -- --shard=${{ matrix.shard }}/3
+      
+      - name: List artifacts before upload
+        if: always()
+        run: |
+          echo "=== Checking artifacts to upload ==="
+          ls -lah playwright-report/ 2>/dev/null | head -5 || echo "No playwright-report"
+          ls -lah blob-report/ 2>/dev/null | head -5 || echo "No blob-report"
+          ls -lah allure-results/ 2>/dev/null | head -5 || echo "No allure-results"
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports-${{ matrix.shard }}
+          path: |
+            playwright-report/
+            blob-report/
+            allure-results/
+          retention-days: 1
+          if-no-files-found: ignore
+        timeout-minutes: 10
+
+  merge-reports:
+    name: Merge & Upload Reports
+    if: always()
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - run: npm ci
+
+      # ─── Install Allure CLI directly from GitHub releases ────────────────────
+      # This is more reliable than allure-commandline npm package in CI.
+      # Java is bundled with ubuntu-latest; Allure just needs the binary on PATH.
+      - name: Install Allure CLI
+        run: |
+          ALLURE_VERSION=2.27.0
+          curl -sL "https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz" \
+            -o allure.tgz
+          tar -xzf allure.tgz
+          echo "$PWD/allure-${ALLURE_VERSION}/bin" >> $GITHUB_PATH
+          echo "✓ Allure CLI ${ALLURE_VERSION} installed"
+
+      - name: Download all shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports
+          pattern: reports-*
+          merge-multiple: false
+
+      - name: Show downloaded artifact structure
+        run: |
+          echo "=== Downloaded artifact structure ==="
+          find all-reports -type f | sort
+
+      # ─── Merge Playwright HTML report from all shards ────────────────────────
+      - name: Merge Playwright blob reports
+        run: |
+          set +e
+          mkdir -p blob-reports-merged playwright-report
+
+          # Playwright 1.45+ uses .zip blob files; older versions use .jsonl
+          find all-reports -path "*/blob-report/*" \( -name "*.zip" -o -name "*.jsonl" \) \
+            -exec cp {} blob-reports-merged/ \;
+
+          BLOB_COUNT=$(find blob-reports-merged -type f | wc -l)
+          echo "Found $BLOB_COUNT blob report files across shards"
+
+          if [ "$BLOB_COUNT" -gt 0 ]; then
+            npx playwright merge-reports --reporter html blob-reports-merged
+            echo "✓ Playwright HTML report merged ($(find playwright-report -type f | wc -l) files)"
+          else
+            echo "⚠ No blob files found — empty playwright-report created"
+          fi
+
+      # ─── Merge Allure results from all shards ────────────────────────────────
+      - name: Merge Allure results
+        run: |
+          set +e
+          mkdir -p merged-allure-results allure-report
+
+          echo "=== Collecting Allure results ==="
+          for dir in all-reports/reports-*/allure-results; do
+            if [ -d "$dir" ] && [ -n "$(ls -A "$dir" 2>/dev/null)" ]; then
+              FILE_COUNT=$(find "$dir" -type f | wc -l)
+              echo "  ✓ $dir  → $FILE_COUNT files"
+              rsync -a "$dir"/ merged-allure-results/
+            else
+              echo "  ⚠ Skipping (empty): $dir"
+            fi
+          done
+
+          TOTAL=$(find merged-allure-results -type f | wc -l)
+          echo "Total Allure result files collected: $TOTAL"
+
+          if [ "$TOTAL" -gt 0 ]; then
+            echo "=== Generating Allure HTML report ==="
+            allure generate merged-allure-results --clean -o allure-report
+            echo "✓ Allure report generated: $(find allure-report -type f | wc -l) files"
+          else
+            echo "⚠ No Allure results to merge"
+          fi
+
+      # ─── Upload final merged reports ─────────────────────────────────────────
+      - name: Upload Playwright HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-html-report
+          path: playwright-report/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Allure HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-html-report
+          path: allure-report/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Report Summary
+        if: always()
+        run: |
+          set +e
+          echo "==================================="
+          echo "       CI/CD Report Summary        "
+          echo "==================================="
+          echo "Playwright report : $(find playwright-report -type f 2>/dev/null | wc -l) files"
+          echo "Allure report     : $(find allure-report     -type f 2>/dev/null | wc -l) files"
+          echo "Artifacts         : playwright-html-report, allure-html-report"
+          echo "==================================="
+
+  # ─── Deploy Allure report to GitHub Pages ────────────────────────────────
+  deploy-allure-report:
+    name: Deploy Allure Report to GitHub Pages
+    if: always()
+    needs: merge-reports
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download Allure HTML report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-html-report
+          path: allure-report
+
+      - name: Check report has files
+        id: check
+        run: |
+          COUNT=$(find allure-report -type f 2>/dev/null | wc -l)
+          echo "files=$COUNT" >> $GITHUB_OUTPUT
+          echo "Allure report files: $COUNT"
+
+      - name: Setup GitHub Pages
+        if: steps.check.outputs.files != '0'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Allure report to Pages
+        if: steps.check.outputs.files != '0'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: allure-report/
+
+      - name: Deploy to GitHub Pages
+        if: steps.check.outputs.files != '0'
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Print report URL
+        if: steps.check.outputs.files != '0'
+        run: |
+          echo "✅ Allure Report deployed!"
+          echo "🔗 View at: ${{ steps.deployment.outputs.page_url }}"

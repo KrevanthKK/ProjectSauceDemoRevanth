@@ -1,0 +1,114 @@
+name: Update Visual Snapshots
+
+# Manually triggered from GitHub Actions UI
+# Go to: Actions → Update Visual Snapshots → Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to update snapshots on'
+        required: true
+        default: 'main'
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'demo'
+        type: choice
+        options:
+          - demo
+          - qa
+
+jobs:
+  update-snapshots:
+    name: Regenerate Linux Snapshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+
+      - name: Validate & create .env file from GitHub Secrets/Variables
+        env:
+          # DEMO — URLs can be Secrets OR Variables; credentials must be Secrets
+          DEMO_BASE_URL:          ${{ secrets.DEMO_BASE_URL        || vars.DEMO_BASE_URL }}
+          DEMO_USER_NAME:         ${{ secrets.DEMO_USER_NAME }}
+          DEMO_PASSWORD:          ${{ secrets.DEMO_PASSWORD }}
+          DEMO_PRODUCTPAGE_URL:   ${{ secrets.DEMO_PRODUCTPAGE_URL || vars.DEMO_PRODUCTPAGE_URL }}
+          # QA — URLs can be Secrets OR Variables; credentials must be Secrets
+          QA_BASE_URL:            ${{ secrets.QA_BASE_URL          || vars.QA_BASE_URL }}
+          QA_USER_NAME:           ${{ secrets.QA_USER_NAME }}
+          QA_PASSWORD:            ${{ secrets.QA_PASSWORD }}
+          QA_PRODUCTPAGE_URL:     ${{ secrets.QA_PRODUCTPAGE_URL   || vars.QA_PRODUCTPAGE_URL }}
+          ENV_NAME: ${{ github.event.inputs.environment || 'demo' }}
+        run: |
+          echo "🌍 Running against environment: $ENV_NAME"
+
+          if [ "$ENV_NAME" = "qa" ]; then
+            SEL_BASE_URL="$QA_BASE_URL"
+            SEL_USER_NAME="$QA_USER_NAME"
+            SEL_PASSWORD="$QA_PASSWORD"
+            SEL_PRODUCTPAGE_URL="$QA_PRODUCTPAGE_URL"
+          else
+            SEL_BASE_URL="$DEMO_BASE_URL"
+            SEL_USER_NAME="$DEMO_USER_NAME"
+            SEL_PASSWORD="$DEMO_PASSWORD"
+            SEL_PRODUCTPAGE_URL="$DEMO_PRODUCTPAGE_URL"
+          fi
+
+          MISSING=""
+          [ -z "$SEL_BASE_URL" ]         && MISSING="$MISSING ${ENV_NAME^^}_BASE_URL"
+          [ -z "$SEL_USER_NAME" ]        && MISSING="$MISSING ${ENV_NAME^^}_USER_NAME"
+          [ -z "$SEL_PASSWORD" ]         && MISSING="$MISSING ${ENV_NAME^^}_PASSWORD"
+          [ -z "$SEL_PRODUCTPAGE_URL" ]  && MISSING="$MISSING ${ENV_NAME^^}_PRODUCTPAGE_URL"
+          if [ -n "$MISSING" ]; then
+            echo "❌ Missing GitHub Secrets:$MISSING"
+            echo "Go to: Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+          echo "✓ All secrets for [$ENV_NAME] are present"
+
+          mkdir -p env-files
+          {
+            echo "BASE_URL=\"$SEL_BASE_URL\""
+            echo "USER_NAME=\"$SEL_USER_NAME\""
+            echo "PASSWORD=\"$SEL_PASSWORD\""
+            echo "PRODUCTPAGE_URL=\"$SEL_PRODUCTPAGE_URL\""
+          } > env-files/.env.$ENV_NAME
+          echo "✓ env-files/.env.$ENV_NAME created"
+          cat env-files/.env.$ENV_NAME | sed 's/=.*/=***/'  # print keys only
+
+      - name: Run tests with --update-snapshots (generates Linux baselines)
+        env:
+          ENV_NAME: ${{ github.event.inputs.environment || 'demo' }}
+        run: npx playwright test --update-snapshots --project=chromium
+        continue-on-error: true
+
+      - name: Show generated snapshots
+        run: |
+          echo "=== Snapshots generated/updated ==="
+          find snapshots -name "*linux*" -type f | sort
+
+      - name: Commit and push updated snapshots
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add snapshots/
+          if git diff --cached --quiet; then
+            echo "No snapshot changes to commit."
+          else
+            git commit -m "ci: update Linux visual snapshots [skip ci]"
+            git push origin ${{ github.event.inputs.branch }}
+            echo "✓ Snapshots committed and pushed"
+          fi

@@ -96,6 +96,10 @@ export default class ProductItemPage extends ProductLogo implements IProductItem
         const productdesc = await this.productInventoryDesc.innerText()
         return productdesc
     }
+    /**
+     * 
+     * @returns is this valid image
+     */
 
     async isValidImage() {
 
