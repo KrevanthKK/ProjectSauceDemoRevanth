@@ -10,7 +10,7 @@ on:
       environment:
         description: 'Target environment'
         required: true
-        default: 'demo'
+        default: 'qa'
         type: choice
         options:
           - demo
@@ -82,7 +82,7 @@ jobs:
           QA_PASSWORD:            ${{ secrets.QA_PASSWORD }}
           QA_PRODUCTPAGE_URL:     ${{ secrets.QA_PRODUCTPAGE_URL }}
           # Which environment to use
-          ENV_NAME: ${{ github.event.inputs.environment || 'demo' }}
+          ENV_NAME: ${{ github.event.inputs.environment || 'qa' }}
         run: |
           echo "🌍 Running against environment: $ENV_NAME"
 
@@ -124,7 +124,7 @@ jobs:
 
       - name: Run tests - Shard ${{ matrix.shard }}/3
         env:
-          ENV_NAME: ${{ github.event.inputs.environment || 'demo' }}
+          ENV_NAME: ${{ github.event.inputs.environment || 'qa' }}
         run: npm test -- --shard=${{ matrix.shard }}/3
       
       - name: List artifacts before upload
