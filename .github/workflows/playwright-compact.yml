@@ -7,8 +7,11 @@ on:
     branches: [ main, develop ]
 
 # SETUP: Add GitHub Secrets (Settings → Secrets and variables → Actions)
+# - BASE_URL: base URL of the app under test
 # - USER_NAME: test username
 # - PASSWORD: test password
+# - PRODUCTPAGE_URL: URL of the product/inventory page
+# These secrets are written to env-files/.env.demo at runtime (file is gitignored).
 # Ref: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
 
 jobs:

@@ -41,10 +41,8 @@ jobs:
           PRODUCTPAGE_URL="${{ secrets.PRODUCTPAGE_URL }}"
           EOF
 
+      - name: Run tests with --update-snapshots (generates Linux baselines)
         run: npx playwright test --update-snapshots --project=chromium
-        env:
-          USER_NAME: ${{ secrets.USER_NAME }}
-          PASSWORD: ${{ secrets.PASSWORD }}
         continue-on-error: true
 
       - name: Show generated snapshots
