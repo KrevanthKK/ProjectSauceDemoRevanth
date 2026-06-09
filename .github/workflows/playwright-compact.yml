@@ -16,6 +16,17 @@ on:
           - demo
           - qa
 
+# Allow only one Pages deployment at a time
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# Permissions needed for GitHub Pages deployment
+permissions:
+  contents: read
+  pages:    write
+  id-token: write
+
 # SETUP: Add GitHub Secrets (Settings → Secrets and variables → Actions)
 # Two sets of secrets — one per environment:
 #
@@ -72,15 +83,15 @@ jobs:
       - name: Validate & create .env file from GitHub Secrets/Variables
         env:
           # DEMO — URLs can be Secrets OR Variables; credentials must be Secrets
-          DEMO_BASE_URL:          ${{ secrets.DEMO_BASE_URL        || vars.DEMO_BASE_URL }}
+          DEMO_BASE_URL:          ${{ vars.DEMO_BASE_URL }}
           DEMO_USER_NAME:         ${{ secrets.DEMO_USER_NAME }}
           DEMO_PASSWORD:          ${{ secrets.DEMO_PASSWORD }}
-          DEMO_PRODUCTPAGE_URL:   ${{ secrets.DEMO_PRODUCTPAGE_URL || vars.DEMO_PRODUCTPAGE_URL }}
+          DEMO_PRODUCTPAGE_URL:   ${{ vars.DEMO_PRODUCTPAGE_URL }}
           # QA — URLs can be Secrets OR Variables; credentials must be Secrets
-          QA_BASE_URL:            ${{ secrets.QA_BASE_URL          || vars.QA_BASE_URL }}
+          QA_BASE_URL:            ${{ vars.QA_BASE_URL }}
           QA_USER_NAME:           ${{ secrets.QA_USER_NAME }}
           QA_PASSWORD:            ${{ secrets.QA_PASSWORD }}
-          QA_PRODUCTPAGE_URL:     ${{ secrets.QA_PRODUCTPAGE_URL   || vars.QA_PRODUCTPAGE_URL }}
+          QA_PRODUCTPAGE_URL:     ${{ vars.QA_PRODUCTPAGE_URL }}
           # Which environment to use
           ENV_NAME: ${{ github.event.inputs.environment || 'qa' }}
         run: |
@@ -266,3 +277,47 @@ jobs:
           echo "Artifacts         : playwright-html-report, allure-html-report"
           echo "==================================="
 
+  # ─── Deploy Allure report to GitHub Pages ────────────────────────────────
+  deploy-allure-report:
+    name: Deploy Allure Report to GitHub Pages
+    if: always()
+    needs: merge-reports
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download Allure HTML report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-html-report
+          path: allure-report
+
+      - name: Check report has files
+        id: check
+        run: |
+          COUNT=$(find allure-report -type f 2>/dev/null | wc -l)
+          echo "files=$COUNT" >> $GITHUB_OUTPUT
+          echo "Allure report files: $COUNT"
+
+      - name: Setup GitHub Pages
+        if: steps.check.outputs.files != '0'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Allure report to Pages
+        if: steps.check.outputs.files != '0'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: allure-report/
+
+      - name: Deploy to GitHub Pages
+        if: steps.check.outputs.files != '0'
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Print report URL
+        if: steps.check.outputs.files != '0'
+        run: |
+          echo "✅ Allure Report deployed!"
+          echo "🔗 View at: ${{ steps.deployment.outputs.page_url }}"
