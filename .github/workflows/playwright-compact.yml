@@ -54,6 +54,25 @@ jobs:
       
       - run: rm -rf allure-results blob-report playwright-report
 
+      - name: Validate required secrets
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          USER_NAME: ${{ secrets.USER_NAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          PRODUCTPAGE_URL: ${{ secrets.PRODUCTPAGE_URL }}
+        run: |
+          MISSING=""
+          [ -z "$BASE_URL" ]         && MISSING="$MISSING BASE_URL"
+          [ -z "$USER_NAME" ]        && MISSING="$MISSING USER_NAME"
+          [ -z "$PASSWORD" ]         && MISSING="$MISSING PASSWORD"
+          [ -z "$PRODUCTPAGE_URL" ]  && MISSING="$MISSING PRODUCTPAGE_URL"
+          if [ -n "$MISSING" ]; then
+            echo "❌ Missing GitHub Secrets:$MISSING"
+            echo "Go to: Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+          echo "✓ All required secrets are present"
+
       - name: Create .env file from GitHub Secrets
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
