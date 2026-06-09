@@ -5,13 +5,28 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'demo'
+        type: choice
+        options:
+          - demo
+          - qa
 
 # SETUP: Add GitHub Secrets (Settings → Secrets and variables → Actions)
-# - BASE_URL: base URL of the app under test
-# - USER_NAME: test username
-# - PASSWORD: test password
-# - PRODUCTPAGE_URL: URL of the product/inventory page
-# These secrets are written to env-files/.env.demo at runtime (file is gitignored).
+# Two sets of secrets — one per environment:
+#
+#  DEMO environment:               QA environment:
+#  ────────────────────────    ────────────────────────
+#  DEMO_BASE_URL                   QA_BASE_URL
+#  DEMO_USER_NAME                  QA_USER_NAME
+#  DEMO_PASSWORD                   QA_PASSWORD
+#  DEMO_PRODUCTPAGE_URL            QA_PRODUCTPAGE_URL
+#
+# Push/PR triggers default to DEMO. Use "Run workflow" in GitHub UI to choose QA.
 # Ref: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
 
 jobs:
@@ -54,43 +69,62 @@ jobs:
       
       - run: rm -rf allure-results blob-report playwright-report
 
-      - name: Validate required secrets
+      - name: Validate & create .env file from GitHub Secrets
         env:
-          BASE_URL: ${{ secrets.BASE_URL }}
-          USER_NAME: ${{ secrets.USER_NAME }}
-          PASSWORD: ${{ secrets.PASSWORD }}
-          PRODUCTPAGE_URL: ${{ secrets.PRODUCTPAGE_URL }}
+          # DEMO secrets
+          DEMO_BASE_URL:          ${{ secrets.DEMO_BASE_URL }}
+          DEMO_USER_NAME:         ${{ secrets.DEMO_USER_NAME }}
+          DEMO_PASSWORD:          ${{ secrets.DEMO_PASSWORD }}
+          DEMO_PRODUCTPAGE_URL:   ${{ secrets.DEMO_PRODUCTPAGE_URL }}
+          # QA secrets
+          QA_BASE_URL:            ${{ secrets.QA_BASE_URL }}
+          QA_USER_NAME:           ${{ secrets.QA_USER_NAME }}
+          QA_PASSWORD:            ${{ secrets.QA_PASSWORD }}
+          QA_PRODUCTPAGE_URL:     ${{ secrets.QA_PRODUCTPAGE_URL }}
+          # Which environment to use
+          ENV_NAME: ${{ github.event.inputs.environment || 'demo' }}
         run: |
+          echo "🌍 Running against environment: $ENV_NAME"
+
+          if [ "$ENV_NAME" = "qa" ]; then
+            SEL_BASE_URL="$QA_BASE_URL"
+            SEL_USER_NAME="$QA_USER_NAME"
+            SEL_PASSWORD="$QA_PASSWORD"
+            SEL_PRODUCTPAGE_URL="$QA_PRODUCTPAGE_URL"
+          else
+            SEL_BASE_URL="$DEMO_BASE_URL"
+            SEL_USER_NAME="$DEMO_USER_NAME"
+            SEL_PASSWORD="$DEMO_PASSWORD"
+            SEL_PRODUCTPAGE_URL="$DEMO_PRODUCTPAGE_URL"
+          fi
+
+          # Validate all required secrets are present
           MISSING=""
-          [ -z "$BASE_URL" ]         && MISSING="$MISSING BASE_URL"
-          [ -z "$USER_NAME" ]        && MISSING="$MISSING USER_NAME"
-          [ -z "$PASSWORD" ]         && MISSING="$MISSING PASSWORD"
-          [ -z "$PRODUCTPAGE_URL" ]  && MISSING="$MISSING PRODUCTPAGE_URL"
+          [ -z "$SEL_BASE_URL" ]         && MISSING="$MISSING ${ENV_NAME^^}_BASE_URL"
+          [ -z "$SEL_USER_NAME" ]        && MISSING="$MISSING ${ENV_NAME^^}_USER_NAME"
+          [ -z "$SEL_PASSWORD" ]         && MISSING="$MISSING ${ENV_NAME^^}_PASSWORD"
+          [ -z "$SEL_PRODUCTPAGE_URL" ]  && MISSING="$MISSING ${ENV_NAME^^}_PRODUCTPAGE_URL"
           if [ -n "$MISSING" ]; then
             echo "❌ Missing GitHub Secrets:$MISSING"
             echo "Go to: Settings → Secrets and variables → Actions → New repository secret"
             exit 1
           fi
-          echo "✓ All required secrets are present"
+          echo "✓ All secrets for [$ENV_NAME] are present"
 
-      - name: Create .env file from GitHub Secrets
-        env:
-          BASE_URL: ${{ secrets.BASE_URL }}
-          USER_NAME: ${{ secrets.USER_NAME }}
-          PASSWORD: ${{ secrets.PASSWORD }}
-          PRODUCTPAGE_URL: ${{ secrets.PRODUCTPAGE_URL }}
-        run: |
+          # Write the env file
           mkdir -p env-files
           {
-            echo "BASE_URL=\"$BASE_URL\""
-            echo "USER_NAME=\"$USER_NAME\""
-            echo "PASSWORD=\"$PASSWORD\""
-            echo "PRODUCTPAGE_URL=\"$PRODUCTPAGE_URL\""
-          } > env-files/.env.demo
-          echo "✓ env-files/.env.demo created"
-          cat env-files/.env.demo | sed 's/=.*/=***/' # print keys only (mask values)
+            echo "BASE_URL=\"$SEL_BASE_URL\""
+            echo "USER_NAME=\"$SEL_USER_NAME\""
+            echo "PASSWORD=\"$SEL_PASSWORD\""
+            echo "PRODUCTPAGE_URL=\"$SEL_PRODUCTPAGE_URL\""
+          } > env-files/.env.$ENV_NAME
+          echo "✓ env-files/.env.$ENV_NAME created"
+          cat env-files/.env.$ENV_NAME | sed 's/=.*/=***/'  # print keys only
 
       - name: Run tests - Shard ${{ matrix.shard }}/3
+        env:
+          ENV_NAME: ${{ github.event.inputs.environment || 'demo' }}
         run: npm test -- --shard=${{ matrix.shard }}/3
       
       - name: List artifacts before upload
