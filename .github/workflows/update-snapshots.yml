@@ -31,7 +31,16 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium --with-deps
 
-      - name: Run tests with --update-snapshots (generates Linux baselines)
+      - name: Create .env file from GitHub Secrets
+        run: |
+          mkdir -p env-files
+          cat > env-files/.env.demo << EOF
+          BASE_URL="${{ secrets.BASE_URL }}"
+          USER_NAME="${{ secrets.USER_NAME }}"
+          PASSWORD="${{ secrets.PASSWORD }}"
+          PRODUCTPAGE_URL="${{ secrets.PRODUCTPAGE_URL }}"
+          EOF
+
         run: npx playwright test --update-snapshots --project=chromium
         env:
           USER_NAME: ${{ secrets.USER_NAME }}

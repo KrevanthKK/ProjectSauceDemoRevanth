@@ -50,12 +50,19 @@ jobs:
         run: npx playwright install-deps
       
       - run: rm -rf allure-results blob-report playwright-report
-      
+
+      - name: Create .env file from GitHub Secrets
+        run: |
+          mkdir -p env-files
+          cat > env-files/.env.demo << EOF
+          BASE_URL="${{ secrets.BASE_URL }}"
+          USER_NAME="${{ secrets.USER_NAME }}"
+          PASSWORD="${{ secrets.PASSWORD }}"
+          PRODUCTPAGE_URL="${{ secrets.PRODUCTPAGE_URL }}"
+          EOF
+
       - name: Run tests - Shard ${{ matrix.shard }}/3
         run: npm test -- --shard=${{ matrix.shard }}/3
-        env:
-          USER_NAME: ${{ secrets.USER_NAME }}
-          PASSWORD: ${{ secrets.PASSWORD }}
       
       - name: List artifacts before upload
         if: always()

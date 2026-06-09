@@ -14,6 +14,7 @@ allure-report/
 .env
 .env.local
 .env.*.local
+env-files/
 
 # OS and IDE files
 .vscode/
