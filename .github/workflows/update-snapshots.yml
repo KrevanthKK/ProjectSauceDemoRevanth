@@ -32,14 +32,21 @@ jobs:
       - run: npx playwright install chromium --with-deps
 
       - name: Create .env file from GitHub Secrets
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          USER_NAME: ${{ secrets.USER_NAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          PRODUCTPAGE_URL: ${{ secrets.PRODUCTPAGE_URL }}
         run: |
           mkdir -p env-files
-          cat > env-files/.env.demo << EOF
-          BASE_URL="${{ secrets.BASE_URL }}"
-          USER_NAME="${{ secrets.USER_NAME }}"
-          PASSWORD="${{ secrets.PASSWORD }}"
-          PRODUCTPAGE_URL="${{ secrets.PRODUCTPAGE_URL }}"
-          EOF
+          {
+            echo "BASE_URL=\"$BASE_URL\""
+            echo "USER_NAME=\"$USER_NAME\""
+            echo "PASSWORD=\"$PASSWORD\""
+            echo "PRODUCTPAGE_URL=\"$PRODUCTPAGE_URL\""
+          } > env-files/.env.demo
+          echo "✓ env-files/.env.demo created"
+          cat env-files/.env.demo | sed 's/=.*/=***/' # print keys only (mask values)
 
       - name: Run tests with --update-snapshots (generates Linux baselines)
         run: npx playwright test --update-snapshots --project=chromium
