@@ -11,7 +11,7 @@ test.describe("End to End Checkout Flow", () => {
 
         await test.step("2. Navigate to the Shopping Cart", async () => {
             await productsPage.clickCartButton();
-            await expect(page).toHaveURL(/.*cart.html11/);
+            await expect(page).toHaveURL(/.*cart.html/);
         });
 
         await test.step("3. Proceed to Checkout Information step", async () => {
