@@ -6,6 +6,7 @@
   "scripts": {
     "test": "playwright test",
     "test:cr_he": "playwright test --headed --project=chromiun",
+    "test:smoke": "playwright test --grep @smoke",
     "test:demo": "cross-env ENV_NAME=demo playwright test",
     "test:qa": "cross-env ENV_NAME=qa playwright test",
     "test:demo_cr_he": "cross-env ENV_NAME=demo playwright test --headed --project=chromium",
